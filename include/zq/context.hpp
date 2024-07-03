@@ -178,16 +178,16 @@ namespace zq {
   /**
    * @brief Factory function for creating a context
    *  This version takes a raw pointer to a native zmq context
-   * @param ctx
-   * @return tl::expected<Context, ErrMsg>
+   * @param z_ctx Native zmq context
+   * @return A \ref Context on success, error on failure.
    */
   [[nodiscard]] auto inline mk_context(
-      void *ctx) noexcept -> tl::expected<Context, std::runtime_error>
+      void *z_ctx) noexcept -> tl::expected<Context, std::runtime_error>
   {
-    if (ctx == nullptr) {
+    if (z_ctx == nullptr) {
       return tl::make_unexpected(std::runtime_error("Invalid context"));
     }
-    return Context{ctx};
+    return Context{z_ctx};
   }
 
   /**

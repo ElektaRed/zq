@@ -34,9 +34,12 @@ namespace zq {
   };
 
   class Context {
-    // The actual constructor
+    // The actual constructors
     friend tl::expected<Context, ErrMsg> mk_context(
         ContextOptions auto const& options) noexcept;
+
+    friend tl::expected<Context, std::runtime_error> mk_context(
+        void* ctx) noexcept;
 
     void* z_ctx{nullptr};
 
@@ -170,6 +173,21 @@ namespace zq {
       }
     }
     return ctx;
+  }
+
+  /**
+   * @brief Factory function for creating a context
+   *  This version takes a raw pointer to a native zmq context
+   * @param ctx
+   * @return tl::expected<Context, ErrMsg>
+   */
+  [[nodiscard]] auto inline mk_context(
+      void *ctx) noexcept -> tl::expected<Context, std::runtime_error>
+  {
+    if (ctx == nullptr) {
+      return tl::make_unexpected(std::runtime_error("Invalid context"));
+    }
+    return Context{ctx};
   }
 
   /**

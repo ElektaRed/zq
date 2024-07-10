@@ -43,12 +43,15 @@ namespace zq {
 
     void* z_ctx{nullptr};
 
-    Context(void* ctx) noexcept : z_ctx{ctx} {};
+    Context(void* ctx, bool owns_ctx = true) noexcept : z_ctx{ctx}, m_owns_ctx{owns_ctx} {};
 
     enum class SocketCon {
       BIND,
       CONNECT,
     };
+
+    // A flag to indicate if Context owns the native ZeroMQ context
+    bool m_owns_ctx{true};
 
     /**
      * @brief Internal connector function
@@ -71,6 +74,7 @@ namespace zq {
                                ? zmq_bind(z_socket, endpoint.data())
                                : zmq_connect(z_socket, endpoint.data());
       if (err_code != 0) {
+        zmq_close(z_socket);
         return tl::make_unexpected(currentErrMsg());
       }
       // ZMQ_LINGER
@@ -99,7 +103,7 @@ namespace zq {
       rhs.z_ctx = nullptr;
     };
 
-    ~Context() noexcept { [[maybe_unused]] auto _ = close(); };
+    ~Context() noexcept { if (m_owns_ctx) [[maybe_unused]] auto _ = close();};
 
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
@@ -187,7 +191,7 @@ namespace zq {
     if (z_ctx == nullptr) {
       return tl::make_unexpected(std::runtime_error("Invalid context"));
     }
-    return Context{z_ctx};
+    return Context{z_ctx, false /* owns_ctx */};
   }
 
   /**

@@ -101,6 +101,7 @@ namespace zq {
     Context(Context&& rhs) noexcept {
       z_ctx = rhs.z_ctx;
       rhs.z_ctx = nullptr;
+      m_owns_ctx = rhs.m_owns_ctx;
     };
 
     ~Context() noexcept { if (m_owns_ctx) [[maybe_unused]] auto _ = close();};

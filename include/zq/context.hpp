@@ -34,18 +34,24 @@ namespace zq {
   };
 
   class Context {
-    // The actual constructor
+    // The actual constructors
     friend tl::expected<Context, ErrMsg> mk_context(
         ContextOptions auto const& options) noexcept;
 
+    friend tl::expected<Context, std::runtime_error> mk_context(
+        void* ctx) noexcept;
+
     void* z_ctx{nullptr};
 
-    Context(void* ctx) noexcept : z_ctx{ctx} {};
+    Context(void* ctx, bool owns_ctx = true) noexcept : z_ctx{ctx}, m_owns_ctx{owns_ctx} {};
 
     enum class SocketCon {
       BIND,
       CONNECT,
     };
+
+    // A flag to indicate if Context owns the native ZeroMQ context
+    bool m_owns_ctx{true};
 
     /**
      * @brief Internal connector function
@@ -68,6 +74,7 @@ namespace zq {
                                ? zmq_bind(z_socket, endpoint.data())
                                : zmq_connect(z_socket, endpoint.data());
       if (err_code != 0) {
+        zmq_close(z_socket);
         return tl::make_unexpected(currentErrMsg());
       }
       // ZMQ_LINGER
@@ -94,9 +101,10 @@ namespace zq {
     Context(Context&& rhs) noexcept {
       z_ctx = rhs.z_ctx;
       rhs.z_ctx = nullptr;
+      m_owns_ctx = rhs.m_owns_ctx;
     };
 
-    ~Context() noexcept { [[maybe_unused]] auto _ = close(); };
+    ~Context() noexcept { if (m_owns_ctx) [[maybe_unused]] auto _ = close();};
 
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
@@ -170,6 +178,21 @@ namespace zq {
       }
     }
     return ctx;
+  }
+
+  /**
+   * @brief Factory function for creating a context
+   *  This version takes a raw pointer to a native zmq context
+   * @param z_ctx Native zmq context
+   * @return A \ref Context on success, error on failure.
+   */
+  [[nodiscard]] auto inline mk_context(
+      void *z_ctx) noexcept -> tl::expected<Context, std::runtime_error>
+  {
+    if (z_ctx == nullptr) {
+      return tl::make_unexpected(std::runtime_error("Invalid context"));
+    }
+    return Context{z_ctx, false /* owns_ctx */};
   }
 
   /**
